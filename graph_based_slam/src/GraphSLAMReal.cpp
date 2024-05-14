@@ -205,12 +205,11 @@ public:
         zero_transform.rotation.w = 1;
 
         // noise params
-        // TODO: tune these values
-        position_noise[0] = 0.00000001;
-        position_noise[1] = 0.00000001;
+        position_noise[0] = 0.8;
+        position_noise[1] = 0.4;
         position_noise[2] = 0.00000001; // heading noise: this should be zero, but it creates problems with the inverse
-        cone_noise[0] = 0.00000001;
-        cone_noise[1] = 0.00000001;
+        cone_noise[0] = 0.4;
+        cone_noise[1] = 0.4;
 
         // add pose data
         addPoseData(initial_pose, zero_transform, zero_stamp, FIRST_NODE_ID);
@@ -219,7 +218,7 @@ public:
         first_fixed_pose = initial_pose;
 
         timer_cb_group = this->create_callback_group(rclcpp::CallbackGroupType::Reentrant);
-        timer_optim = this->create_wall_timer(300.5s, std::bind(&GraphSLAMReal::timer_callback, this), timer_cb_group); // TODO: handle callback group
+        timer_optim = this->create_wall_timer(1s, std::bind(&GraphSLAMReal::timer_callback, this), timer_cb_group); // TODO: handle callback group
         
         // initialize publisher for the pose graph
         graph_pub = this->create_publisher<graph_based_slam::msg::PoseGraph>("pose_graph", 1);
@@ -604,7 +603,7 @@ private:
 
         //timer condition to prevent loop closure on the first time the cone is visited
         auto time_diff = std::chrono::duration_cast<std::chrono::seconds>(now - _init_time);
-        if (cones_msg->big_orange_cones.size() >= 2 && !LOOP_CLOSED) //&& time_diff.count() > 90.0 && !LOOP_CLOSED
+        if (cones_msg->big_orange_cones.size() >= 2 && !LOOP_CLOSED && time_diff.count() > 15.0) //&& time_diff.count() > 90.0 && !LOOP_CLOSED
         {
             // LOOP CLOSURE DETECTED!
             auto prev_mat = first_fixed_pose->estimate();
@@ -624,7 +623,7 @@ private:
             g2o::EdgeSE2 *new_edge = graph_handler_ptr->createPoseEdge(first_fixed_pose, last_pose, rel_pose.inverse(), info_mat);
             std::cout << "first fixed point: " << first_fixed_pose << "  last pose: " << last_pose << std::endl;
             graph_handler_ptr->addPoseEdge(new_edge);
-            //LOOP_CLOSED = true;
+            LOOP_CLOSED = true;
             timer_callback();
 
             // construct the message for the new edge
@@ -1082,9 +1081,6 @@ private:
         doing_optim = true;
         optim_timer = std::chrono::steady_clock::now();
 
-        // used to find transformation between poses before and after optimization
-        auto old_vertices = graph_handler_ptr->getNodes();
-        std::vector<geometry_msgs::msg::Transform> position_transformations;
 
         // very high n. iterations, it stops when the error does not decrease anymore
         graph_handler_ptr->globalOptimization(50);
@@ -1125,47 +1121,23 @@ private:
         for (int i = 0; i < optimized_vertices.size(); i++)
         {
             auto vert = optimized_vertices[i];
-            auto vert_old = old_vertices[i];
 
             NodeData *vert_data = dynamic_cast<NodeData *>(dynamic_cast<g2o::OptimizableGraph::Vertex *>(vert)->userData());
             
 
             double x_vert, y_vert;
-            double x_vert_old, y_vert_old; 
 
             if (vert_data->getNodeType() == LANDMARK_TYPE)
             {
                 x_vert = dynamic_cast<g2o::VertexPointXY *>(vert)->estimate().x();
                 y_vert = dynamic_cast<g2o::VertexPointXY *>(vert)->estimate().y();
-
-                x_vert_old = dynamic_cast<g2o::VertexPointXY *>(vert_old)->estimate().x();
-                y_vert_old = dynamic_cast<g2o::VertexPointXY *>(vert_old)->estimate().y();
-
-                geometry_msgs::msg::Transform transformation;
-                transformation.translation.x = x_vert - x_vert_old;
-                transformation.translation.y = y_vert - y_vert_old;
-
-                position_transformations.push_back(transformation);
-                //std::cout << "transformation cone: x" << transformation.translation.x << " y: " << transformation.translation.y << std::endl;
-
                 all_nodes_msg.push_back(nodeMessage(LANDMARK_TYPE, static_cast<int>(vert->id()), vert_data->getTimestamp(), x_vert, y_vert, dynamic_cast<ConeData *>(vert_data)->getColor()));
-
                 num_cones_mapped++;
             }
             else
             {
                 x_vert = dynamic_cast<g2o::VertexSE2 *>(vert)->estimate().translation()[0];
                 y_vert = dynamic_cast<g2o::VertexSE2 *>(vert)->estimate().translation()[1];
-
-                x_vert_old = dynamic_cast<g2o::VertexSE2 *>(vert_old)->estimate().translation()[0];
-                y_vert_old = dynamic_cast<g2o::VertexSE2 *>(vert_old)->estimate().translation()[1];
-
-                geometry_msgs::msg::Transform transformation;
-                transformation.translation.x = x_vert - x_vert_old;
-                transformation.translation.y = y_vert - y_vert_old;
-
-                position_transformations.push_back(transformation);
-                std::cout << "transformation localization: x" << transformation.translation.x << " y: " << transformation.translation.y << std::endl;
 
                 all_nodes_msg.push_back(nodeMessage(ROBOT_TYPE, static_cast<int>(vert->id()), vert_data->getTimestamp(), x_vert, y_vert));
             }
@@ -1244,8 +1216,8 @@ private:
         cv::Mat R = (cv::Mat_<double>(3, 3) <<  0.9318794, -0.3153596, -0.1793018,
         0.3596048,  0.8681628,  0.3420202,
         0.0478038, -0.3831993,  0.9224278 );  // Rotation matrix //experimental number
-        cv::Mat T = (cv::Mat_<double>(3, 1) << -6.3437, 2.560, 0.9245);  // Translation vector //changed to positive //best values so far -5.7437, 2.560, -0.9245
-        cv::Mat pointInCarFrameMat = (pointInCameraFrameMat)+T;
+        cv::Mat T = (cv::Mat_<double>(3, 1) << -6.3437, 0.560, 0.9245);  // Translation vector //changed to positive //best values so far -5.7437, 2.560, -0.9245
+        cv::Mat pointInCarFrameMat = (R*pointInCameraFrameMat)+T;
         geometry_msgs::msg::PointStamped pointInCarFrame;
         pointInCarFrame.point.x = 0;
         pointInCarFrame.point.y = static_cast<float>(pointInCarFrameMat.at<double>(1, 0));
