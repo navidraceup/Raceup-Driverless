@@ -1,6 +1,7 @@
 // C++ standard headers
 #include <string>
 #include <vector>
+#include <fstream>
 
 // ROS headers
 #include <rclcpp/rclcpp.hpp>
@@ -14,6 +15,7 @@
 
 rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr graph_viz_pub;
 int id = 0;
+
 
 /**
  * Callback when a custom message containing the pose graph is received.
@@ -130,6 +132,7 @@ void graph_callback(const graph_based_slam::msg::PoseGraph::SharedPtr graph_msg)
   graph_viz_pub->publish(*markers_array);
 }
 
+
 int main(int argc, char *argv[])
 {
   rclcpp::init(argc, argv);
@@ -138,6 +141,7 @@ int main(int argc, char *argv[])
 
   rclcpp::Subscription<graph_based_slam::msg::PoseGraph>::SharedPtr graph_sub = node_ptr->create_subscription<graph_based_slam::msg::PoseGraph>("/pose_graph", 10, graph_callback);
   graph_viz_pub = node_ptr->create_publisher<visualization_msgs::msg::MarkerArray>("graph_viz", 1);
+  
 
   rclcpp::spin(node_ptr);
   rclcpp::shutdown();

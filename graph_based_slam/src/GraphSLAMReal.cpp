@@ -28,6 +28,7 @@
 #include <deque>
 #include <stack>
 #include <mutex>
+#include <fstream>
 
 // ROS headers
 #include <rclcpp/rclcpp.hpp>
@@ -173,7 +174,6 @@ public:
         custom_qos_profile.durability = rmw_qos_durability_policy_t::RMW_QOS_POLICY_DURABILITY_VOLATILE;
         // declare and acquire `target_frame` parameter
         target_frame = this->declare_parameter<std::string>("target_frame", "base_footprint");
-        
 
         //subscriber to odometry
         cones_sub.subscribe(this, "/cone_pose", custom_qos_profile);
@@ -214,14 +214,16 @@ public:
         // add pose data
         addPoseData(initial_pose, zero_transform, zero_stamp, FIRST_NODE_ID);
 
+
         initial_pose->setFixed(true);
         first_fixed_pose = initial_pose;
 
         timer_cb_group = this->create_callback_group(rclcpp::CallbackGroupType::Reentrant);
-        timer_optim = this->create_wall_timer(1s, std::bind(&GraphSLAMReal::timer_callback, this), timer_cb_group); // TODO: handle callback group
+        timer_optim = this->create_wall_timer(100s, std::bind(&GraphSLAMReal::timer_callback, this), timer_cb_group); // TODO: handle callback group
         
         // initialize publisher for the pose graph
         graph_pub = this->create_publisher<graph_based_slam::msg::PoseGraph>("pose_graph", 1);
+        gt_cone_pub = this->create_publisher<visualization_msgs::msg::MarkerArray>("gtCone_viz", 1);
     }
     virtual ~GraphSLAMReal(){};
 
@@ -234,6 +236,7 @@ private:
     std::shared_ptr<message_filters::Synchronizer<approx_policy>> syncApprox;
     std::string target_frame;
     rclcpp::Publisher<graph_based_slam::msg::PoseGraph>::SharedPtr graph_pub;
+    rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr gt_cone_pub;
     rclcpp::TimerBase::SharedPtr timer_optim;
     rclcpp::CallbackGroup::SharedPtr timer_cb_group;
 
@@ -453,6 +456,9 @@ private:
             // retrieve the node corresponding to the current car pose
             g2o::VertexSE2 *curr_car_pose = graph_handler_ptr->getLastPoseNode();
 
+            //visualise ground truth cones
+            gtVisualization();
+
             // process big orange cones
             for (int i = 0; i < static_cast<int>(cones_msg->big_orange_cones.size()); i++)
             {
@@ -603,7 +609,7 @@ private:
 
         //timer condition to prevent loop closure on the first time the cone is visited
         auto time_diff = std::chrono::duration_cast<std::chrono::seconds>(now - _init_time);
-        if (cones_msg->big_orange_cones.size() >= 2 && !LOOP_CLOSED && time_diff.count() > 15.0) //&& time_diff.count() > 90.0 && !LOOP_CLOSED
+        if (cones_msg->big_orange_cones.size() >= 2 && !LOOP_CLOSED && time_diff.count() > 90.0) //&& time_diff.count() > 90.0 && !LOOP_CLOSED
         {
             // LOOP CLOSURE DETECTED!
             auto prev_mat = first_fixed_pose->estimate();
@@ -1327,6 +1333,64 @@ private:
         new_node_msg.id = id;
         return new_node_msg;
     }
+
+      /**
+  * Visualise the groud truth cones.
+  */
+  void gtVisualization()
+  {
+        visualization_msgs::msg::MarkerArray marker_array;
+        visualization_msgs::msg::Marker marker;
+        marker.header.frame_id = "map";
+        marker.ns = "cones";
+        marker.type = visualization_msgs::msg::Marker::SPHERE;
+        marker.action = visualization_msgs::msg::Marker::ADD;
+
+            std::ifstream infile("/media/navid/FiLix/imgs/gt_cones/gt_BlueAndYellowCones.txt");
+            if (!infile.is_open())
+            {
+                std::cerr << "file doenst exist \n";
+                return;
+            }
+
+            std::string line;
+            int id = 0;
+
+            while (std::getline(infile, line))
+            {
+                std::stringstream ss(line);
+                std::string x_str, y_str;
+                if (!std::getline(ss, x_str, ',') || !std::getline(ss, y_str, ','))
+                {
+                    std::cerr << "wrong file structure \n";
+                    continue;
+                }
+
+                double x = std::stod(x_str);
+                double y = std::stod(y_str);
+
+                marker.id = id++;
+                marker.pose.position.x = x;
+                marker.pose.position.y = y;
+                marker.pose.position.z = 0.0;
+                marker.pose.orientation.x = 0.0;
+                marker.pose.orientation.y = 0.0;
+                marker.pose.orientation.z = 0.0;
+                marker.pose.orientation.w = 1.0;
+                marker.scale.x = 0.5;
+                marker.scale.y = 0.5;
+                marker.scale.z = 0.5;
+                marker.color.r = 0.0;
+                marker.color.g = 0.0;
+                marker.color.b = 1.0;
+                marker.color.a = 1.0;
+                marker_array.markers.push_back(marker);
+
+            }
+            infile.close();
+            gt_cone_pub->publish(marker_array); 
+    }
+        
 
 };
 

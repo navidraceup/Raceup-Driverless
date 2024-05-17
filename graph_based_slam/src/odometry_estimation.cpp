@@ -68,6 +68,7 @@ public:
     // constructor
     explicit OdomEstimation(const rclcpp::NodeOptions &options) : Node("odom_estimation", options)
     {
+        resetCarState();
         // eufs_msgs::msg::CarState::SharedPtr --> type  of data  used by the simulator odometry message
         // read velocity and steering angle from the car_info topic, containing data parsed from can readings (launch kvaser_parser together with the bag to get this topic)
         car_info_sub = this->create_subscription<kvaser_reader_driver::msg::CarInfo>("/car_info", 10, std::bind(&OdomEstimation::integrateOdom, this, _1));
@@ -248,8 +249,8 @@ private:
         // car_state.header.frame_id = _reference_frame;
         _state.child_frame_id = "base_footprint";
 
-        _state.pose.pose.position.x = 0.0;
-        _state.pose.pose.position.y = 0.0;
+        _state.pose.pose.position.x = 7;
+        _state.pose.pose.position.y = 4;
         _state.pose.pose.position.z = 0.0;
 
         std::vector<double> orientation = {0.0, 0.0, 0.0};

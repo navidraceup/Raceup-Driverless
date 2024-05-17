@@ -85,7 +85,7 @@ public:
         img_points.push_back(cv::Point2f(292, 2534));  // bottom-left cone
 
         cv::Mat pix_to_m = getPixelToMetersTransform(ground_pts, img_points);
-        std::string file = "/media/navid/FiLix/imgs/gt_cones/BlueCones.txt";
+        std::string file = "/media/navid/FiLix/imgs/gt_cones/StartCones.txt";
 
         getRealCoords(file, pix_to_m);
     }
@@ -118,7 +118,7 @@ private:
             std::cout << cone << std::endl;
         }
         // save to a txt file
-        saveMetersToTxt("/media/navid/FiLix/imgs/gt_cones/gt_BlueCones.txt", cones_meters);
+        saveMetersToTxt("/media/navid/FiLix/imgs/gt_cones/gt_StartCones.txt", cones_meters);
     }
 
     /**

@@ -189,8 +189,8 @@ public:
     position_noise[0] = 0.8;
     position_noise[1] = 0.4;
     position_noise[2] = 0.00000001; // heading noise: this should be zero, but it creates problems with the inverse
-    cone_noise[0] = 0.4;
-    cone_noise[1] = 0.4;
+    cone_noise[0] = 4;
+    cone_noise[1] = 4;
 
     //  initialize tf2 components
     tf_broadcaster = std::make_unique<tf2_ros::TransformBroadcaster>(*this);
@@ -200,7 +200,7 @@ public:
     data_cb_group = this->create_callback_group(rclcpp::CallbackGroupType::Reentrant);
     timer_cb_group = this->create_callback_group(rclcpp::CallbackGroupType::Reentrant);
 
-    timer_optim = this->create_wall_timer(7s, std::bind(&GraphSLAM::timer_callback, this), timer_cb_group); // TODO: handle callback group
+    timer_optim = this->create_wall_timer(130s, std::bind(&GraphSLAM::timer_callback, this), timer_cb_group); // TODO: handle callback group
 
     // get data of ground truth wheel speed
     gt_wheel_sub = this->create_subscription<eufs_msgs::msg::WheelSpeedsStamped>(
