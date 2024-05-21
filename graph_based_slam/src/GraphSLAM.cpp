@@ -186,11 +186,11 @@ public:
     target_frame = this->declare_parameter<std::string>("target_frame", "base_footprint");
 
     // noise params TODO: choose values for noise
-    position_noise[0] = 0.8;
-    position_noise[1] = 0.4;
+    position_noise[0] = 0.2;
+    position_noise[1] = 0.1;
     position_noise[2] = 0.00000001; // heading noise: this should be zero, but it creates problems with the inverse
-    cone_noise[0] = 4;
-    cone_noise[1] = 4;
+    cone_noise[0] = 0.1;
+    cone_noise[1] = 0.1;
 
     //  initialize tf2 components
     tf_broadcaster = std::make_unique<tf2_ros::TransformBroadcaster>(*this);

@@ -205,11 +205,11 @@ public:
         zero_transform.rotation.w = 1;
 
         // noise params
-        position_noise[0] = 0.8;
-        position_noise[1] = 0.4;
+        position_noise[0] = 0.01;
+        position_noise[1] = 0.01;
         position_noise[2] = 0.00000001; // heading noise: this should be zero, but it creates problems with the inverse
-        cone_noise[0] = 0.4;
-        cone_noise[1] = 0.4;
+        cone_noise[0] = 0.8;
+        cone_noise[1] = 0.2; 
 
         // add pose data
         addPoseData(initial_pose, zero_transform, zero_stamp, FIRST_NODE_ID);
@@ -219,7 +219,7 @@ public:
         first_fixed_pose = initial_pose;
 
         timer_cb_group = this->create_callback_group(rclcpp::CallbackGroupType::Reentrant);
-        timer_optim = this->create_wall_timer(100s, std::bind(&GraphSLAMReal::timer_callback, this), timer_cb_group); // TODO: handle callback group
+        timer_optim = this->create_wall_timer(500s, std::bind(&GraphSLAMReal::timer_callback, this), timer_cb_group); // TODO: handle callback group
         
         // initialize publisher for the pose graph
         graph_pub = this->create_publisher<graph_based_slam::msg::PoseGraph>("pose_graph", 1);
@@ -673,7 +673,7 @@ private:
 
                     addConeData(added_vertex, cone_unique_ID, ORANGE_CONE, cones_msg->header.stamp, cone_map_frame);
                     // add an edge between the current pose and the observed cones (pose-landmark edge)
-                    g2o::EdgeSE2PointXY *added_edge = add_cone_edge(CameraToRobotTransformer(cones_msg->big_orange_cones[i].point), added_vertex, last_pose);
+                    //g2o::EdgeSE2PointXY *added_edge = add_cone_edge(CameraToRobotTransformer(cones_msg->big_orange_cones[i].point), added_vertex, last_pose);
                 }
                 else
                 {
@@ -696,7 +696,7 @@ private:
                 {
                     // compute the coordinates of the associateed vertex in base footprint --> apply inverse transformation
                     // it was cones_msg->big_orange_cones[i].point
-                    g2o::EdgeSE2PointXY *added_edge = add_cone_edge(CameraToRobotTransformer(cones_msg->big_orange_cones[i].point), assoc_found, last_pose);
+                    //g2o::EdgeSE2PointXY *added_edge = add_cone_edge(CameraToRobotTransformer(cones_msg->big_orange_cones[i].point), assoc_found, last_pose);
                 }
                 else
                 {
@@ -1225,7 +1225,7 @@ private:
         cv::Mat T = (cv::Mat_<double>(3, 1) << -6.3437, 0.560, 0.9245);  // Translation vector //changed to positive //best values so far -5.7437, 2.560, -0.9245
         cv::Mat pointInCarFrameMat = (R*pointInCameraFrameMat)+T;
         geometry_msgs::msg::PointStamped pointInCarFrame;
-        pointInCarFrame.point.x = 0;
+        pointInCarFrame.point.x = static_cast<float>(pointInCarFrameMat.at<double>(0, 0));
         pointInCarFrame.point.y = static_cast<float>(pointInCarFrameMat.at<double>(1, 0));
         pointInCarFrame.point.z = static_cast<float>(pointInCarFrameMat.at<double>(2, 0));
 
@@ -1370,16 +1370,16 @@ private:
                 double y = std::stod(y_str);
 
                 marker.id = id++;
-                marker.pose.position.x = x;
-                marker.pose.position.y = y;
+                marker.pose.position.x = x-7;
+                marker.pose.position.y = y-3;
                 marker.pose.position.z = 0.0;
                 marker.pose.orientation.x = 0.0;
                 marker.pose.orientation.y = 0.0;
                 marker.pose.orientation.z = 0.0;
                 marker.pose.orientation.w = 1.0;
-                marker.scale.x = 0.5;
-                marker.scale.y = 0.5;
-                marker.scale.z = 0.5;
+                marker.scale.x = 1;
+                marker.scale.y = 1;
+                marker.scale.z = 1;
                 marker.color.r = 0.0;
                 marker.color.g = 0.0;
                 marker.color.b = 1.0;

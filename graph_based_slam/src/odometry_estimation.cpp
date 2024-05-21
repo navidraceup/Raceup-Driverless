@@ -249,8 +249,8 @@ private:
         // car_state.header.frame_id = _reference_frame;
         _state.child_frame_id = "base_footprint";
 
-        _state.pose.pose.position.x = 7;
-        _state.pose.pose.position.y = 4;
+        _state.pose.pose.position.x = 0.0;
+        _state.pose.pose.position.y = 0.0;
         _state.pose.pose.position.z = 0.0;
 
         std::vector<double> orientation = {0.0, 0.0, 0.0};

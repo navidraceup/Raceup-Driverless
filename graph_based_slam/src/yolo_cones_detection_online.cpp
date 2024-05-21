@@ -36,7 +36,7 @@ int input_argc;
 const char **input_argv;
 
 const float SCORE_THRESHOLD = 0.7; // score of cone detection
-const int DISP_THRESHOLD = 6;
+const int DISP_THRESHOLD = 8;
 const int EPIPOLAR_TOLERANCE = 4;
 
 // ***************** RESCALED RECTIFIED CAMERA MODELS ******************
